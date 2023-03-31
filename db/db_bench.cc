@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <mod/util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <mod/util.h>
 
 #include "leveldb/cache.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/write_batch.h"
+
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"
@@ -112,10 +113,8 @@ static bool FLAGS_reuse_logs = false;
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
 
-
-//#define __OPTIMIZE__
-//#define NDEBUG
-
+// #define __OPTIMIZE__
+// #define NDEBUG
 
 namespace leveldb {
 
@@ -275,12 +274,9 @@ class Stats {
     }
     AppendWithSpace(&extra, message_);
 
-      fprintf(stdout, "%-12s : %11.3f micros/op;%s%s;%10.3f\n",
-              name.ToString().c_str(),
-              seconds_ * 1e6 / done_,
-              (extra.empty() ? "" : " "),
-              extra.c_str(),
-              seconds_);
+    fprintf(stdout, "%-12s : %11.3f micros/op;%s%s;%10.3f\n",
+            name.ToString().c_str(), seconds_ * 1e6 / done_,
+            (extra.empty() ? "" : " "), extra.c_str(), seconds_);
     if (FLAGS_histogram) {
       fprintf(stdout, "Microseconds per op:\n%s\n", hist_.ToString().c_str());
     }
@@ -738,16 +734,16 @@ class Benchmark {
         const int k = seq ? i + j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        //batch.Put(key, gen.Generate(value_size_));
+        // batch.Put(key, gen.Generate(value_size_));
         db_->Put(write_options_, key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-//      s = db_->Write(write_options_, &batch);
-//      if (!s.ok()) {
-//        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-//        exit(1);
-//      }
+      //      s = db_->Write(write_options_, &batch);
+      //      if (!s.ok()) {
+      //        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+      //        exit(1);
+      //      }
     }
     thread->stats.AddBytes(bytes);
   }
@@ -975,7 +971,7 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--mod=%d%c", &n, &junk) == 1) {
       adgMod::MOD = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
-        FLAGS_db = argv[i] + 5;
+      FLAGS_db = argv[i] + 5;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

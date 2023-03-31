@@ -323,7 +323,8 @@ LearnedIndexData* FileLearnedIndexData::GetModel(int number) {
   if (file_learned_index_data.size() <= number)
     file_learned_index_data.resize(number + 1, nullptr);
   if (file_learned_index_data[number] == nullptr)
-    file_learned_index_data[number] = new LearnedIndexData(file_allowed_seek, false);
+    file_learned_index_data[number] =
+        new LearnedIndexData(file_allowed_seek, false);
   return file_learned_index_data[number];
 }
 

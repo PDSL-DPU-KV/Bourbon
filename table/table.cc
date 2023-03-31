@@ -2,29 +2,32 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#include <iostream>
 #include "leveldb/table.h"
+
+#include <iostream>
 
 #include "leveldb/cache.h"
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/options.h"
+
 #include "table/block.h"
 #include "table/filter_block.h"
 #include "table/format.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
-#include "mod/stats.h"
-#include "mod/learned_index.h"
+
 #include "../db/version_set.h"
+#include "mod/learned_index.h"
+#include "mod/stats.h"
 
 namespace leveldb {
 
 Table::Rep::~Rep() {
-    delete filter;
-    delete[] filter_data;
-    delete index_block;
+  delete filter;
+  delete[] filter_data;
+  delete index_block;
 }
 
 Status Table::Open(const Options& options, RandomAccessFile* file,
@@ -206,65 +209,65 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
 }
 
 Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
-                          void (*handle_result)(void*, const Slice&, const Slice&), int level,
-                          FileMetaData* meta, uint64_t lower, uint64_t upper, bool learned, Version* version) {
+                          void (*handle_result)(void*, const Slice&,
+                                                const Slice&),
+                          int level, FileMetaData* meta, uint64_t lower,
+                          uint64_t upper, bool learned, Version* version) {
   adgMod::Stats* instance = adgMod::Stats::GetInstance();
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
   ParsedInternalKey parsed_key;
   ParseInternalKey(k, &parsed_key);
 
+#ifdef INTERNAL_TIMER
+  instance->StartTimer(2);
+#endif
+  iiter->Seek(k);
+#ifdef INTERNAL_TIMER
+  instance->PauseTimer(2);
+#endif
 
+  if (iiter->Valid()) {
 #ifdef INTERNAL_TIMER
-    instance->StartTimer(2);
+    instance->StartTimer(15);
 #endif
-    iiter->Seek(k);
+    Slice handle_value = iiter->value();
+    FilterBlockReader* filter = rep_->filter;
+    BlockHandle handle;
+    if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
+        !filter->KeyMayMatch(handle.offset(), k)) {
 #ifdef INTERNAL_TIMER
-    instance->PauseTimer(2);
+      auto time = instance->PauseTimer(15, true);
+      adgMod::levelled_counters[9].Increment(level, time.second - time.first);
 #endif
-
-    if (iiter->Valid()) {
+      // Not found
+    } else {
 #ifdef INTERNAL_TIMER
-      instance->StartTimer(15);
+      auto time = instance->PauseTimer(15, true);
+      adgMod::levelled_counters[9].Increment(level, time.second - time.first);
+      instance->StartTimer(5);
 #endif
-      Slice handle_value = iiter->value();
-      FilterBlockReader* filter = rep_->filter;
-      BlockHandle handle;
-      if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
-          !filter->KeyMayMatch(handle.offset(), k)) {
-
+      Iterator* block_iter = BlockReader(this, options, iiter->value());
 #ifdef INTERNAL_TIMER
-        auto time = instance->PauseTimer(15, true);
-        adgMod::levelled_counters[9].Increment(level, time.second - time.first);
+      instance->PauseTimer(5);
+      instance->StartTimer(3);
 #endif
-        // Not found
-      } else {
+      block_iter->Seek(k);
 #ifdef INTERNAL_TIMER
-        auto time = instance->PauseTimer(15, true);
-        adgMod::levelled_counters[9].Increment(level, time.second - time.first);
-        instance->StartTimer(5);
+      instance->PauseTimer(3);
 #endif
-        Iterator* block_iter = BlockReader(this, options, iiter->value());
-#ifdef INTERNAL_TIMER
-        instance->PauseTimer(5);
-        instance->StartTimer(3);
-#endif
-        block_iter->Seek(k);
-#ifdef INTERNAL_TIMER
-        instance->PauseTimer(3);
-#endif
-        if (block_iter->Valid()) {
-          (*handle_result)(arg, block_iter->key(), block_iter->value());
-        }
-        s = block_iter->status();
-        delete block_iter;
+      if (block_iter->Valid()) {
+        (*handle_result)(arg, block_iter->key(), block_iter->value());
       }
+      s = block_iter->status();
+      delete block_iter;
     }
-    if (s.ok()) {
-      s = iiter->status();
-    }
-    delete iiter;
-    return s;
+  }
+  if (s.ok()) {
+    s = iiter->status();
+  }
+  delete iiter;
+  return s;
 }
 
 uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
@@ -294,44 +297,51 @@ uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
   return result;
 }
 
-void Table::FillData(const ReadOptions& options, adgMod::LearnedIndexData* data) {
-    if (data->filled) return;
-    //data->string_keys.clear();
-    //data->num_entries_accumulated.array.clear();
+void Table::FillData(const ReadOptions& options,
+                     adgMod::LearnedIndexData* data) {
+  if (data->filled) return;
+  // data->string_keys.clear();
+  // data->num_entries_accumulated.array.clear();
   Status status;
-  Block::Iter* index_iter = dynamic_cast<Block::Iter*>(rep_->index_block->NewIterator(rep_->options.comparator));
-  //uint64_t num_points = 0;
+  Block::Iter* index_iter = dynamic_cast<Block::Iter*>(
+      rep_->index_block->NewIterator(rep_->options.comparator));
+  // uint64_t num_points = 0;
   for (uint32_t i = 0; i < index_iter->num_restarts_; ++i) {
     index_iter->SeekToRestartPoint(i);
     index_iter->ParseNextKey();
     assert(index_iter->Valid());
-    Block::Iter* block_iter = dynamic_cast<Block::Iter*>(BlockReader(this, options, index_iter->value()));
+    Block::Iter* block_iter = dynamic_cast<Block::Iter*>(
+        BlockReader(this, options, index_iter->value()));
 
     ParsedInternalKey parsed_key;
     int num_entries_this_block = 0;
-    for (block_iter->SeekToRestartPoint(0); block_iter->ParseNextKey(); ++num_entries_this_block) {
-        ParseInternalKey(block_iter->key(), &parsed_key);
-        data->string_keys.emplace_back(parsed_key.user_key.data(), parsed_key.user_key.size());
+    for (block_iter->SeekToRestartPoint(0); block_iter->ParseNextKey();
+         ++num_entries_this_block) {
+      ParseInternalKey(block_iter->key(), &parsed_key);
+      data->string_keys.emplace_back(parsed_key.user_key.data(),
+                                     parsed_key.user_key.size());
     }
-    //num_points += num_entries_this_block;
+    // num_points += num_entries_this_block;
 
     if (!adgMod::block_num_entries_recorded) {
-        adgMod::block_num_entries = num_entries_this_block;
-        adgMod::block_num_entries_recorded = true;
-        adgMod::entry_size = block_iter->restarts_ / num_entries_this_block;
-        BlockHandle temp;
-        Slice temp_slice = index_iter->value();
-        temp.DecodeFrom(&temp_slice);
-        adgMod::block_size = temp.size() + kBlockTrailerSize;
+      adgMod::block_num_entries = num_entries_this_block;
+      adgMod::block_num_entries_recorded = true;
+      adgMod::entry_size = block_iter->restarts_ / num_entries_this_block;
+      BlockHandle temp;
+      Slice temp_slice = index_iter->value();
+      temp.DecodeFrom(&temp_slice);
+      adgMod::block_size = temp.size() + kBlockTrailerSize;
     }
 
     uint64_t current_total = data->num_entries_accumulated.NumEntries();
     if (!data->Learned()) {
-        data->num_entries_accumulated.Add(current_total + num_entries_this_block, std::string(parsed_key.user_key.data(), parsed_key.user_key.size()));
+      data->num_entries_accumulated.Add(
+          current_total + num_entries_this_block,
+          std::string(parsed_key.user_key.data(), parsed_key.user_key.size()));
     }
     delete block_iter;
   }
-  //data->num_entries_accumulated.Add(num_points, "");
+  // data->num_entries_accumulated.Add(num_points, "");
   data->filled = true;
   delete index_iter;
 }

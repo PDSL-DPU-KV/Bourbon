@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "util/hash.h"
+
 #include "util/testharness.h"
 
 namespace leveldb {

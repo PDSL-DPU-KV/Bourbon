@@ -5,13 +5,13 @@
 #ifndef STORAGE_LEVELDB_DB_VERSION_EDIT_H_
 #define STORAGE_LEVELDB_DB_VERSION_EDIT_H_
 
+#include "db/dbformat.h"
 #include <set>
 #include <utility>
 #include <vector>
 
-#include "db/dbformat.h"
-#include "mod/stats.h"
 #include "mod/learned_index.h"
+#include "mod/stats.h"
 
 using std::vector;
 

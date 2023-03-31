@@ -6,7 +6,6 @@
 #define STORAGE_LEVELDB_TABLE_FORMAT_H_
 
 #include <stdint.h>
-
 #include <string>
 
 #include "leveldb/slice.h"
@@ -23,6 +22,7 @@ struct ReadOptions;
 // block or a meta block.
 class BlockHandle {
   friend class TableCache;
+
  public:
   // Maximum encoding length of a BlockHandle
   enum { kMaxEncodedLength = 10 + 10 };

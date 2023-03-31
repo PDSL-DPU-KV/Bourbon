@@ -5,11 +5,10 @@
 #include "util/logging.h"
 
 #include <errno.h>
+#include <limits>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <limits>
 
 #include "leveldb/env.h"
 #include "leveldb/slice.h"

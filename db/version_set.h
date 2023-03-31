@@ -15,12 +15,12 @@
 #ifndef STORAGE_LEVELDB_DB_VERSION_SET_H_
 #define STORAGE_LEVELDB_DB_VERSION_SET_H_
 
+#include "db/dbformat.h"
+#include "db/version_edit.h"
 #include <map>
 #include <set>
 #include <vector>
 
-#include "db/dbformat.h"
-#include "db/version_edit.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
 
@@ -117,16 +117,18 @@ class Version {
   // print level summary
   void PrintAll() const;
   // Fill file model data
-  bool FillData(const ReadOptions& options, FileMetaData* meta, adgMod::LearnedIndexData* data);
-  // Fill level model data, essentially fill every file model data in that level and copy
-  // them as a whole
+  bool FillData(const ReadOptions& options, FileMetaData* meta,
+                adgMod::LearnedIndexData* data);
+  // Fill level model data, essentially fill every file model data in that level
+  // and copy them as a whole
   bool FillLevel(const ReadOptions& options, int level);
   // Write and read file&level models (the name is misguiding LOL)
   void WriteLevelModel();
   void ReadLevelModel();
   // Offline file learning will call this to learn all files
   void FileLearn();
-  // When a DB is loaded, the stats of all files is dumped by this function to be used in CBA
+  // When a DB is loaded, the stats of all files is dumped by this function to
+  // be used in CBA
   void ReadFileStats();
 
  private:
@@ -145,9 +147,10 @@ class Version {
         file_to_compact_level_(-1),
         compaction_score_(-1),
         compaction_level_(-1) {
-            for (int i = 0; i < config::kNumLevels; ++i)
-                learned_index_data_.push_back(std::make_shared<adgMod::LearnedIndexData>(adgMod::level_allowed_seek, true));
-        }
+    for (int i = 0; i < config::kNumLevels; ++i)
+      learned_index_data_.push_back(std::make_shared<adgMod::LearnedIndexData>(
+          adgMod::level_allowed_seek, true));
+  }
 
   Version(const Version&) = delete;
   Version& operator=(const Version&) = delete;
@@ -182,9 +185,10 @@ class Version {
   double compaction_score_;
   int compaction_level_;
 
-public:
+ public:
   std::vector<std::shared_ptr<adgMod::LearnedIndexData>> learned_index_data_;
-  std::map<int, std::shared_ptr<adgMod::LearnedIndexData>> file_learned_index_data_;
+  std::map<int, std::shared_ptr<adgMod::LearnedIndexData>>
+      file_learned_index_data_;
 };
 
 class VersionSet {
@@ -294,9 +298,7 @@ class VersionSet {
   };
   const char* LevelSummary(LevelSummaryStorage* scratch) const;
 
-
   static bool IsFound(void* arg);
-
 
  private:
   class Builder;

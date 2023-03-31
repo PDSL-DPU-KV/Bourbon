@@ -5,17 +5,18 @@
 #ifndef STORAGE_LEVELDB_DB_DB_IMPL_H_
 #define STORAGE_LEVELDB_DB_DB_IMPL_H_
 
-#include <atomic>
-#include <deque>
-#include <set>
-#include <string>
-#include <mod/Vlog.h>
-
 #include "db/dbformat.h"
 #include "db/log_writer.h"
 #include "db/snapshot.h"
+#include <atomic>
+#include <deque>
+#include <mod/Vlog.h>
+#include <set>
+#include <string>
+
 #include "leveldb/db.h"
 #include "leveldb/env.h"
+
 #include "port/port.h"
 #include "port/thread_annotations.h"
 
@@ -73,7 +74,6 @@ class DBImpl : public DB {
 
   static void BGWork(void* db);
 
-
   virtual void PrintFileInfo();
   Version* GetCurrentVersion();
   void ReturnCurrentVersion(Version* version);
@@ -81,10 +81,7 @@ class DBImpl : public DB {
   std::atomic<int> version_count;
   adgMod::VLog* vlog;
 
-
-
-
-private:
+ private:
   friend class DB;
   friend class TableCache;
   struct CompactionState;
@@ -154,7 +151,7 @@ private:
 
   void MaybeScheduleCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-    void BackgroundCall();
+  void BackgroundCall();
   void BackgroundCompaction() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
   void CleanupCompaction(CompactionState* compact)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
@@ -211,10 +208,11 @@ private:
   bool background_compaction_scheduled_ GUARDED_BY(mutex_);
 
   ManualCompaction* manual_compaction_ GUARDED_BY(mutex_);
-public:
-  VersionSet* const versions_;
-private:
 
+ public:
+  VersionSet* const versions_;
+
+ private:
   // Have we encountered a background error in paranoid mode?
   Status bg_error_ GUARDED_BY(mutex_);
 

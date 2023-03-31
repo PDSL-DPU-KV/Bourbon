@@ -4,17 +4,18 @@
 
 #include "leveldb/db.h"
 
-#include <atomic>
-#include <string>
-
 #include "db/db_impl.h"
 #include "db/filename.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
+#include <atomic>
+#include <string>
+
 #include "leveldb/cache.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/table.h"
+
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "util/hash.h"
@@ -2080,7 +2081,7 @@ class ModelDB : public DB {
   }
   virtual void CompactRange(const Slice* start, const Slice* end) {}
 
-  virtual void PrintFileInfo() {};
+  virtual void PrintFileInfo(){};
 
  private:
   class ModelIter : public Iterator {

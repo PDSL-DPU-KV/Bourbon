@@ -6,9 +6,11 @@
 #include "db/filename.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
+
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/write_batch.h"
+
 #include "util/logging.h"
 #include "util/testharness.h"
 #include "util/testutil.h"

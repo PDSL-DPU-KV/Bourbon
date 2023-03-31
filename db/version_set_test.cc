@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "db/version_set.h"
+
 #include "util/logging.h"
 #include "util/testharness.h"
 #include "util/testutil.h"

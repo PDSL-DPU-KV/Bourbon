@@ -8,12 +8,14 @@
 
 #include <algorithm>
 #include <vector>
-#include "mod/stats.h"
 
 #include "leveldb/comparator.h"
+
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/logging.h"
+
+#include "mod/stats.h"
 
 namespace leveldb {
 
@@ -44,7 +46,6 @@ Block::~Block() {
     delete[] data_;
   }
 }
-
 
 Iterator* Block::NewIterator(const Comparator* comparator) {
   if (size_ < sizeof(uint32_t)) {

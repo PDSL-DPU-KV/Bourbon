@@ -6,10 +6,11 @@
 #define STORAGE_LEVELDB_INCLUDE_OPTIONS_H_
 
 #include <stddef.h>
-#include "mod/stats.h"
 
 #include "leveldb/export.h"
+
 #include "filter_policy.h"
+#include "mod/stats.h"
 
 namespace leveldb {
 

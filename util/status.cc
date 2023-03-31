@@ -4,8 +4,8 @@
 
 #include "leveldb/status.h"
 
-#include <stdio.h>
 #include <iostream>
+#include <stdio.h>
 
 #include "port/port.h"
 
@@ -76,5 +76,3 @@ std::string Status::ToString() const {
 }
 
 }  // namespace leveldb
-
-

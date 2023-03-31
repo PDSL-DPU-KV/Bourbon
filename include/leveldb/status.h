@@ -14,8 +14,8 @@
 #define STORAGE_LEVELDB_INCLUDE_STATUS_H_
 
 #include <algorithm>
-#include <string>
 #include <map>
+#include <string>
 
 #include "leveldb/export.h"
 #include "leveldb/slice.h"
@@ -119,7 +119,5 @@ inline Status& Status::operator=(Status&& rhs) noexcept {
 }
 
 }  // namespace leveldb
-
-
 
 #endif  // STORAGE_LEVELDB_INCLUDE_STATUS_H_

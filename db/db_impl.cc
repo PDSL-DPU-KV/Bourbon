@@ -4,16 +4,6 @@
 
 #include "db/db_impl.h"
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include <algorithm>
-#include <atomic>
-#include <set>
-#include <string>
-#include <vector>
-#include <unistd.h>
-
 #include "db/builder.h"
 #include "db/db_iter.h"
 #include "db/dbformat.h"
@@ -24,11 +14,22 @@
 #include "db/table_cache.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
+#include <algorithm>
+#include <atomic>
+#include <set>
+#include <stdint.h>
+#include <stdio.h>
+#include <string>
+#include <unistd.h>
+#include <vector>
+#include <x86intrin.h>
+
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/status.h"
 #include "leveldb/table.h"
 #include "leveldb/table_builder.h"
+
 #include "port/port.h"
 #include "table/block.h"
 #include "table/merger.h"
@@ -36,9 +37,9 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
-#include "mod/stats.h"
+
 #include "mod/Vlog.h"
-#include <x86intrin.h>
+#include "mod/stats.h"
 
 namespace leveldb {
 
@@ -125,7 +126,8 @@ Options SanitizeOptions(const std::string& dbname,
 
 static int TableCacheSize(const Options& sanitized_options) {
   // Reserve ten files or so for other uses and give the rest to TableCache.
-  return /*sanitized_options.max_open_files*/ (int) adgMod::fd_limit - kNumNonTableCacheFiles;
+  return /*sanitized_options.max_open_files*/ (int)adgMod::fd_limit -
+         kNumNonTableCacheFiles;
 }
 
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
@@ -154,9 +156,9 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       versions_(new VersionSet(dbname_, &options_, table_cache_,
                                &internal_comparator_)),
       version_count(0) {
-        adgMod::db = this;
-        vlog = new adgMod::VLog(dbname_ + "/vlog.txt");
-      }
+  adgMod::db = this;
+  vlog = new adgMod::VLog(dbname_ + "/vlog.txt");
+}
 
 DBImpl::~DBImpl() {
   // Wait for background work to finish.
@@ -288,21 +290,23 @@ void DBImpl::DeleteObsoleteFiles() {
         if (type == kTableFile) {
           table_cache_->Evict(number);
           if (!adgMod::fresh_write) {
-            // when a file is deleted due to compaction, its stats during the lifetime
-            // is recorded by CBA
+            // when a file is deleted due to compaction, its stats during the
+            // lifetime is recorded by CBA
             adgMod::file_stats_mutex.Lock();
             auto iter = adgMod::file_stats.find(number);
-            //assert(iter != adgMod::file_stats.end());
+            // assert(iter != adgMod::file_stats.end());
             adgMod::FileStats& file_stat = iter->second;
             file_stat.Finish();
             if (file_stat.end - file_stat.start >= adgMod::learn_trigger_time) {
-              adgMod::learn_cb_model->AddFileData(file_stat.level, file_stat.num_lookup_neg, file_stat.num_lookup_pos, file_stat.size);
+              adgMod::learn_cb_model->AddFileData(
+                  file_stat.level, file_stat.num_lookup_neg,
+                  file_stat.num_lookup_pos, file_stat.size);
             }
             adgMod::file_stats_mutex.Unlock();
           }
 
-//          adgMod::LearnedIndexData* model = adgMod::file_data->GetModel(number);
-//          delete model;
+          //          adgMod::LearnedIndexData* model =
+          //          adgMod::file_data->GetModel(number); delete model;
         }
         Log(options_.info_log, "Delete type=%d #%lld\n", static_cast<int>(type),
             static_cast<unsigned long long>(number));
@@ -563,14 +567,13 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     if (!adgMod::fresh_write) {
       adgMod::file_stats_mutex.Lock();
       assert(adgMod::file_stats.find(meta.number) == adgMod::file_stats.end());
-      adgMod::file_stats.insert({meta.number, adgMod::FileStats(level, meta.file_size)});
+      adgMod::file_stats.insert(
+          {meta.number, adgMod::FileStats(level, meta.file_size)});
       adgMod::file_stats_mutex.Unlock();
     }
 
-
-  } else return Status::NotFound("Empty");
-
-
+  } else
+    return Status::NotFound("Empty");
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
@@ -581,11 +584,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
 
 int DBImpl::CompactMemTable() {
   mutex_.AssertHeld();
-//  assert(false);
+  //  assert(false);
   assert(imm_ != nullptr);
 
-    adgMod::Stats* instance = adgMod::Stats::GetInstance();
-    instance->StartTimer(16);
+  adgMod::Stats* instance = adgMod::Stats::GetInstance();
+  instance->StartTimer(16);
 
   // Save the contents of the memtable as a new Table
   VersionEdit edit;
@@ -615,37 +618,37 @@ int DBImpl::CompactMemTable() {
     RecordBackgroundError(s);
   }
 
-    auto time = instance->PauseTimer(16, true);
-    int level = edit.new_files_[0].first;
-    adgMod::compaction_counter_mutex.Lock();
-    adgMod::events[0].push_back(new CompactionEvent(time, to_string(level)));
-    adgMod::levelled_counters[5].Increment(edit.new_files_[0].first, time.second - time.first);
-    adgMod::compaction_counter_mutex.Unlock();
+  auto time = instance->PauseTimer(16, true);
+  int level = edit.new_files_[0].first;
+  adgMod::compaction_counter_mutex.Lock();
+  adgMod::events[0].push_back(new CompactionEvent(time, to_string(level)));
+  adgMod::levelled_counters[5].Increment(edit.new_files_[0].first,
+                                         time.second - time.first);
+  adgMod::compaction_counter_mutex.Unlock();
 
-    env_->PrepareLearning(time.second, level, new FileMetaData(edit.new_files_[0].second));
-
-
+  env_->PrepareLearning(time.second, level,
+                        new FileMetaData(edit.new_files_[0].second));
 
   return level;
 }
 
-void DBImpl::CompactMemTable(MemTable *table) {
-    mutex_.AssertHeld();
-    if (table == nullptr || !adgMod::fresh_write) return;
+void DBImpl::CompactMemTable(MemTable* table) {
+  mutex_.AssertHeld();
+  if (table == nullptr || !adgMod::fresh_write) return;
 
-    // Save the contents of the memtable as a new Table
-    VersionEdit edit;
-    Version* base = versions_->current();
-    base->Ref();
-    Status s = WriteLevel0Table(table, &edit, base);
-    base->Unref();
+  // Save the contents of the memtable as a new Table
+  VersionEdit edit;
+  Version* base = versions_->current();
+  base->Ref();
+  Status s = WriteLevel0Table(table, &edit, base);
+  base->Unref();
 
-    // Replace immutable memtable with the generated Table
-    if (s.ok()) {
-        edit.SetPrevLogNumber(0);
-        edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
-        s = versions_->LogAndApply(&edit, &mutex_);
-    }
+  // Replace immutable memtable with the generated Table
+  if (s.ok()) {
+    edit.SetPrevLogNumber(0);
+    edit.SetLogNumber(logfile_number_);  // Earlier logs no longer needed
+    s = versions_->LogAndApply(&edit, &mutex_);
+  }
 }
 
 void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
@@ -742,7 +745,7 @@ void DBImpl::MaybeScheduleCompaction() {
   } else {
     background_compaction_scheduled_ = true;
     adgMod::Stats* instance = adgMod::Stats::GetInstance();
-    //instance->ReportEventWithTime("CS x");
+    // instance->ReportEventWithTime("CS x");
     env_->compaction_awaiting += 1;
     env_->Schedule(&DBImpl::BGWork, this);
   }
@@ -816,13 +819,13 @@ void DBImpl::BackgroundCompaction() {
     status = versions_->LogAndApply(c->edit(), &mutex_);
 
     if (!adgMod::fresh_write) {
-        adgMod::file_stats_mutex.Lock();
-        auto iter = adgMod::file_stats.find(f->number);
-        if (iter != adgMod::file_stats.end()) {
-            assert(iter->second.level == c->level());
-            iter->second.level += 1;
-        }
-        adgMod::file_stats_mutex.Unlock();
+      adgMod::file_stats_mutex.Lock();
+      auto iter = adgMod::file_stats.find(f->number);
+      if (iter != adgMod::file_stats.end()) {
+        assert(iter->second.level == c->level());
+        iter->second.level += 1;
+      }
+      adgMod::file_stats_mutex.Unlock();
     }
 
     if (!status.ok()) {
@@ -845,46 +848,46 @@ void DBImpl::BackgroundCompaction() {
   }
 
   if (c != nullptr && adgMod::MOD == 9 && !adgMod::fresh_write) {
-      //TODO: enqueue updated levels
-      Version* current = versions_->current();
-      int level = c->level();
-      adgMod::LearnedIndexData::LevelLearn(new adgMod::VersionAndSelf{current, version_count, current->learned_index_data_[level].get(), level}, true);
-      adgMod::LearnedIndexData::LevelLearn(new adgMod::VersionAndSelf{current, version_count, current->learned_index_data_[level+1].get(), level+1}, true);
+    // TODO: enqueue updated levels
+    Version* current = versions_->current();
+    int level = c->level();
+    adgMod::LearnedIndexData::LevelLearn(
+        new adgMod::VersionAndSelf{current, version_count,
+                                   current->learned_index_data_[level].get(),
+                                   level},
+        true);
+    adgMod::LearnedIndexData::LevelLearn(
+        new adgMod::VersionAndSelf{
+            current, version_count,
+            current->learned_index_data_[level + 1].get(), level + 1},
+        true);
   }
 
-    if (c != nullptr) {
-        std::set<int> changed_level;
-        for (auto& item: c->edit()->deleted_files_) {
-            changed_level.insert(item.first);
-        }
-        for (auto& item: c->edit()->new_files_) {
-            changed_level.insert(item.first);
-        }
-
-        string changed_level_string;
-
-        auto time = instance->PauseTimer(7, true);
-
-        adgMod::compaction_counter_mutex.Lock();
-        for (auto item: changed_level) {
-            changed_level_string += to_string(item);
-            adgMod::levelled_counters[5].Increment(item, time.second - time.first);
-        }
-        adgMod::events[0].push_back(new CompactionEvent(time, std::move(changed_level_string)));
-        adgMod::compaction_counter_mutex.Unlock();
-
-
-
-    } else {
-        instance->PauseTimer(7);
+  if (c != nullptr) {
+    std::set<int> changed_level;
+    for (auto& item : c->edit()->deleted_files_) {
+      changed_level.insert(item.first);
+    }
+    for (auto& item : c->edit()->new_files_) {
+      changed_level.insert(item.first);
     }
 
+    string changed_level_string;
 
+    auto time = instance->PauseTimer(7, true);
 
+    adgMod::compaction_counter_mutex.Lock();
+    for (auto item : changed_level) {
+      changed_level_string += to_string(item);
+      adgMod::levelled_counters[5].Increment(item, time.second - time.first);
+    }
+    adgMod::events[0].push_back(
+        new CompactionEvent(time, std::move(changed_level_string)));
+    adgMod::compaction_counter_mutex.Unlock();
 
-
-
-
+  } else {
+    instance->PauseTimer(7);
+  }
 
   delete c;
 
@@ -909,8 +912,6 @@ void DBImpl::BackgroundCompaction() {
     }
     manual_compaction_ = nullptr;
   }
-
-
 }
 
 void DBImpl::CleanupCompaction(CompactionState* compact) {
@@ -995,10 +996,11 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   if (!adgMod::fresh_write) {
     adgMod::file_stats_mutex.Lock();
     assert(adgMod::file_stats.find(output_number) == adgMod::file_stats.end());
-    adgMod::file_stats.insert({output_number, adgMod::FileStats(compact->compaction->level() + 1, current_bytes)});
+    adgMod::file_stats.insert(
+        {output_number,
+         adgMod::FileStats(compact->compaction->level() + 1, current_bytes)});
     adgMod::file_stats_mutex.Unlock();
   }
-
 
   uint32_t dummy;
   FileMetaData* meta = new FileMetaData();
@@ -1009,7 +1011,9 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   meta->largest = output->largest;
 
   // When a new file is generated, it's put into learning_prepare queue.
-  env_->PrepareLearning((__rdtscp(&dummy) - instance->initial_time) / adgMod::reference_frequency, level, meta);
+  env_->PrepareLearning(
+      (__rdtscp(&dummy) - instance->initial_time) / adgMod::reference_frequency,
+      level, meta);
 
   if (s.ok() && current_entries > 0) {
     // Verify that the table is usable
@@ -1074,7 +1078,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
 
-//  vector<string> keys;
+  //  vector<string> keys;
 
   for (; input->Valid() && !shutting_down_.load(std::memory_order_acquire);) {
     // Prioritize immutable compaction work
@@ -1091,9 +1095,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     }
 
     Slice key = input->key();
-//    ParsedInternalKey parsed;
-//    ParseInternalKey(key, &parsed);
-//    keys.push_back(parsed.user_key);
+    //    ParsedInternalKey parsed;
+    //    ParseInternalKey(key, &parsed);
+    //    keys.push_back(parsed.user_key);
 
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != nullptr) {
@@ -1276,10 +1280,7 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
 
 Status DBImpl::Get(const ReadOptions& options, const Slice& key,
                    std::string* value) {
-
   adgMod::Stats* instance = adgMod::Stats::GetInstance();
-
-
 
   Status s;
   MutexLock l(&mutex_);
@@ -1301,8 +1302,6 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   bool have_stat_update = false;
   Version::GetStats stats;
 
-
-
   // Unlock while reading from files and memtables
   {
     mutex_.Unlock();
@@ -1318,7 +1317,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 #ifdef RECORD_LEVEL_INFO
       adgMod::levelled_counters[3].Increment(7);
 #endif
-        // Done
+      // Done
     } else if (imm != nullptr && imm->Get(lkey, value, &s)) {
 #ifdef INTERNAL_TIMER
       instance->PauseTimer(14);
@@ -1326,7 +1325,7 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
 #ifdef RECORD_LEVEL_INFO
       adgMod::levelled_counters[3].Increment(7);
 #endif
-        // Done
+      // Done
     } else {
 #ifdef INTERNAL_TIMER
       instance->PauseTimer(14);
@@ -1334,7 +1333,8 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       s = current->Get(options, lkey, value, &stats);
     }
 
-    // if Wisckey based implementation, need to read the value log to get the actual value
+    // if Wisckey based implementation, need to read the value log to get the
+    // actual value
     if (adgMod::MOD >= 7 && s.ok()) {
 #ifdef INTERNAL_TIMER
       instance->StartTimer(12);
@@ -1349,9 +1349,9 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     mutex_.Lock();
   }
 
-//  if (have_stat_update && current->UpdateStats(stats)) {
-//    MaybeScheduleCompaction();
-//  }
+  //  if (have_stat_update && current->UpdateStats(stats)) {
+  //    MaybeScheduleCompaction();
+  //  }
 
   mem->Unref();
   if (imm != nullptr) imm->Unref();
@@ -1374,7 +1374,7 @@ Iterator* DBImpl::NewIterator(const ReadOptions& options) {
 void DBImpl::RecordReadSample(Slice key) {
   MutexLock l(&mutex_);
   if (versions_->current()->RecordReadSample(key)) {
-    //MaybeScheduleCompaction();
+    // MaybeScheduleCompaction();
   }
 }
 
@@ -1395,7 +1395,8 @@ Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);
     EncodeFixed32(buffer + sizeof(uint64_t), val.size());
-    return DB::Put(o, key, (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
+    return DB::Put(o, key,
+                   (Slice){buffer, sizeof(uint64_t) + sizeof(uint32_t)});
   } else {
     return DB::Put(o, key, val);
   }
@@ -1436,26 +1437,26 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
     {
       mutex_.Unlock();
       if (adgMod::MOD < 7) {
-          status = log_->AddRecord(WriteBatchInternal::Contents(updates));
-          bool sync_error = false;
-          if (status.ok() && options.sync) {
-              status = logfile_->Sync();
-              if (!status.ok()) {
-                  sync_error = true;
-              }
+        status = log_->AddRecord(WriteBatchInternal::Contents(updates));
+        bool sync_error = false;
+        if (status.ok() && options.sync) {
+          status = logfile_->Sync();
+          if (!status.ok()) {
+            sync_error = true;
           }
+        }
       }
 
       if (status.ok()) {
         status = WriteBatchInternal::InsertInto(updates, mem_);
       }
       mutex_.Lock();
-//      if (sync_error) {
-//        // The state of the log file is indeterminate: the log record we
-//        // just added may or may not show up when the DB is re-opened.
-//        // So we force the DB into a mode where all future writes fail.
-//        RecordBackgroundError(status);
-//      }
+      //      if (sync_error) {
+      //        // The state of the log file is indeterminate: the log record we
+      //        // just added may or may not show up when the DB is re-opened.
+      //        // So we force the DB into a mode where all future writes fail.
+      //        RecordBackgroundError(status);
+      //      }
     }
     if (updates == tmp_batch_) tmp_batch_->Clear();
 
@@ -1537,7 +1538,6 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   mutex_.AssertHeld();
 
   adgMod::Stats* instance = adgMod::Stats::GetInstance();
-
 
   assert(!writers_.empty());
   bool allow_delay = !force;
@@ -1740,7 +1740,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   }
   if (s.ok()) {
     impl->DeleteObsoleteFiles();
-    //impl->MaybeScheduleCompaction();
+    // impl->MaybeScheduleCompaction();
     impl->versions_->current()->ReadLevelModel();
     impl->versions_->current()->ReadFileStats();
   }
@@ -1773,7 +1773,9 @@ Status DestroyDB(const std::string& dbname, const Options& options) {
     FileType type;
     for (size_t i = 0; i < filenames.size(); i++) {
       if ((ParseFileName(filenames[i], &number, &type) &&
-          type != kDBLockFile) || filenames[i].find("vlog") != string::npos) {  // Lock file will be deleted at end
+           type != kDBLockFile) ||
+          filenames[i].find("vlog") !=
+              string::npos) {  // Lock file will be deleted at end
         Status del = env->DeleteFile(dbname + "/" + filenames[i]);
         if (result.ok() && !del.ok()) {
           result = del;
@@ -1788,31 +1790,30 @@ Status DestroyDB(const std::string& dbname, const Options& options) {
 }
 
 void DBImpl::PrintFileInfo() {
-    MutexLock l(&mutex_);
-    Version* ver = versions_->current();
-    ver->Ref();
-    ver->PrintAll();
-    ver->Unref();
+  MutexLock l(&mutex_);
+  Version* ver = versions_->current();
+  ver->Ref();
+  ver->PrintAll();
+  ver->Unref();
 }
 
 Version* DBImpl::GetCurrentVersion() {
-    MutexLock l(&mutex_);
-    Version* ver = versions_->current();
-    ver->Ref();
-    return ver;
+  MutexLock l(&mutex_);
+  Version* ver = versions_->current();
+  ver->Ref();
+  return ver;
 }
 
 void DBImpl::ReturnCurrentVersion(Version* version) {
-    MutexLock l(&mutex_);
-    version->Unref();
+  MutexLock l(&mutex_);
+  version->Unref();
 }
 
 void DBImpl::WaitForBackground() {
-    MutexLock l(&mutex_);
-    while (background_compaction_scheduled_) {
-        background_work_finished_signal_.Wait();
-    }
+  MutexLock l(&mutex_);
+  while (background_compaction_scheduled_) {
+    background_work_finished_signal_.Wait();
+  }
 }
-
 
 }  // namespace leveldb

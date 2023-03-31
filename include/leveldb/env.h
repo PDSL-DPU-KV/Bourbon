@@ -13,12 +13,11 @@
 #ifndef STORAGE_LEVELDB_INCLUDE_ENV_H_
 #define STORAGE_LEVELDB_INCLUDE_ENV_H_
 
+#include <atomic>
 #include <stdarg.h>
 #include <stdint.h>
-
 #include <string>
 #include <vector>
-#include <atomic>
 
 #include "leveldb/export.h"
 #include "leveldb/status.h"
@@ -54,7 +53,6 @@ class Slice;
 class WritableFile;
 class PosixRandomAccessFile;
 class FileMetaData;
-
 
 class LEVELDB_EXPORT Env {
  public:
@@ -192,10 +190,13 @@ class LEVELDB_EXPORT Env {
   // Sleep/delay the thread for the prescribed number of micro-seconds.
   virtual void SleepForMicroseconds(int micros) = 0;
 
-  virtual void ClearPendingLearning() {};
-  virtual void ScheduleLearning(void (*background_work_function)(void*), void* background_work_arg, int priority) {};
-  virtual void NewRandomAccessFileLearned(const std::string& filename, RandomAccessFile** result) {};
-  virtual void PrepareLearning(uint64_t time_start, int level, FileMetaData* meta) {};
+  virtual void ClearPendingLearning(){};
+  virtual void ScheduleLearning(void (*background_work_function)(void*),
+                                void* background_work_arg, int priority){};
+  virtual void NewRandomAccessFileLearned(const std::string& filename,
+                                          RandomAccessFile** result){};
+  virtual void PrepareLearning(uint64_t time_start, int level,
+                               FileMetaData* meta){};
   std::atomic<int> compaction_awaiting;
 };
 

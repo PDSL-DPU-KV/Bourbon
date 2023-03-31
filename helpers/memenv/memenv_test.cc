@@ -4,12 +4,13 @@
 
 #include "helpers/memenv/memenv.h"
 
+#include "db/db_impl.h"
 #include <string>
 #include <vector>
 
-#include "db/db_impl.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
+
 #include "util/testharness.h"
 
 namespace leveldb {

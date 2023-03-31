@@ -10,6 +10,7 @@
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/options.h"
+
 #include "table/block_builder.h"
 #include "table/filter_block.h"
 #include "table/format.h"
@@ -101,7 +102,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   if (r->pending_index_entry) {
     assert(r->data_block.empty());
-    //r->options.comparator->FindShortestSeparator(&r->last_key, key);
+    // r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
     r->index_block.Add(r->last_key, Slice(handle_encoding));
@@ -228,7 +229,7 @@ Status TableBuilder::Finish() {
   // Write index block
   if (ok()) {
     if (r->pending_index_entry) {
-      //r->options.comparator->FindShortSuccessor(&r->last_key);
+      // r->options.comparator->FindShortSuccessor(&r->last_key);
       std::string handle_encoding;
       r->pending_handle.EncodeTo(&handle_encoding);
       r->index_block.Add(r->last_key, Slice(handle_encoding));

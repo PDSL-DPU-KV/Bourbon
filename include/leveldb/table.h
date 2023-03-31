@@ -5,8 +5,8 @@
 #ifndef STORAGE_LEVELDB_INCLUDE_TABLE_H_
 #define STORAGE_LEVELDB_INCLUDE_TABLE_H_
 
-#include <stdint.h>
 #include <db/version_edit.h>
+#include <stdint.h>
 #include <table/format.h>
 
 #include "leveldb/export.h"
@@ -64,21 +64,20 @@ class LEVELDB_EXPORT Table {
  private:
   friend class TableCache;
 
+  struct Rep {
+    ~Rep();
 
-    struct Rep {
+    Options options;
+    Status status;
+    RandomAccessFile* file;
+    uint64_t cache_id;
+    FilterBlockReader* filter;
+    const char* filter_data;
 
-        ~Rep();
-
-        Options options;
-        Status status;
-        RandomAccessFile* file;
-        uint64_t cache_id;
-        FilterBlockReader* filter;
-        const char* filter_data;
-
-        BlockHandle metaindex_handle;  // Handle to metaindex_block: saved from footer
-        Block* index_block;
-    };
+    BlockHandle
+        metaindex_handle;  // Handle to metaindex_block: saved from footer
+    Block* index_block;
+  };
 
   static Iterator* BlockReader(void*, const ReadOptions&, const Slice&);
 
@@ -88,8 +87,11 @@ class LEVELDB_EXPORT Table {
   // to Seek(key).  May not make such a call if filter policy says
   // that key is not present.
   Status InternalGet(const ReadOptions&, const Slice& key, void* arg,
-                     void (*handle_result)(void* arg, const Slice& k, const Slice& v), int level,
-                     FileMetaData* meta = nullptr, uint64_t lower = 0, uint64_t upper = 0, bool learned = false, Version* version = nullptr);
+                     void (*handle_result)(void* arg, const Slice& k,
+                                           const Slice& v),
+                     int level, FileMetaData* meta = nullptr,
+                     uint64_t lower = 0, uint64_t upper = 0,
+                     bool learned = false, Version* version = nullptr);
 
   void ReadMeta(const Footer& footer);
   void ReadFilter(const Slice& filter_handle_value);

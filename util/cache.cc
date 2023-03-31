@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "leveldb/cache.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "leveldb/cache.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "util/hash.h"
@@ -203,7 +204,8 @@ LRUCache::LRUCache() : capacity_(0), usage_(0) {
 }
 
 LRUCache::~LRUCache() {
-  //assert(in_use_.next == &in_use_);  // Error if caller has an unreleased handle
+  // assert(in_use_.next == &in_use_);  // Error if caller has an unreleased
+  // handle
   for (LRUHandle* e = lru_.next; e != &lru_;) {
     LRUHandle* next = e->next;
     assert(e->in_cache);

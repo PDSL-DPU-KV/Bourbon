@@ -7,14 +7,16 @@
 #ifndef STORAGE_LEVELDB_DB_TABLE_CACHE_H_
 #define STORAGE_LEVELDB_DB_TABLE_CACHE_H_
 
+#include "db/dbformat.h"
 #include <cstdint>
 #include <string>
 
-#include "db/dbformat.h"
 #include "leveldb/cache.h"
 #include "leveldb/table.h"
-#include "table/filter_block.h"
+
 #include "port/port.h"
+#include "table/filter_block.h"
+
 #include "version_edit.h"
 
 namespace leveldb {
@@ -22,16 +24,15 @@ namespace leveldb {
 class Env;
 
 class FilterAndFile {
-public:
-    RandomAccessFile* file;
-    FilterBlockReader* filter;
+ public:
+  RandomAccessFile* file;
+  FilterBlockReader* filter;
 
-
-    FilterAndFile() : file(nullptr), filter(nullptr) {}
-    ~FilterAndFile() {
-        delete file;
-        delete filter;
-    }
+  FilterAndFile() : file(nullptr), filter(nullptr) {}
+  ~FilterAndFile() {
+    delete file;
+    delete filter;
+  }
 };
 
 class TableCache {
@@ -53,26 +54,32 @@ class TableCache {
   // call (*handle_result)(arg, found_key, found_value).
   Status Get(const ReadOptions& options, uint64_t file_number,
              uint64_t file_size, const Slice& k, void* arg,
-             void (*handle_result)(void*, const Slice&, const Slice&), int level,
-             FileMetaData* meta = nullptr, uint64_t lower = 0, uint64_t upper = 0, bool learned = false, Version* version = nullptr,
-             adgMod::LearnedIndexData** model = nullptr, bool* file_learned = nullptr);
+             void (*handle_result)(void*, const Slice&, const Slice&),
+             int level, FileMetaData* meta = nullptr, uint64_t lower = 0,
+             uint64_t upper = 0, bool learned = false,
+             Version* version = nullptr,
+             adgMod::LearnedIndexData** model = nullptr,
+             bool* file_learned = nullptr);
 
   // Evict any entry for the specified file number
   void Evict(uint64_t file_number);
 
   // fill file data (all keys in this file)
-  bool FillData(const ReadOptions& options, FileMetaData* meta, adgMod::LearnedIndexData* data);
+  bool FillData(const ReadOptions& options, FileMetaData* meta,
+                adgMod::LearnedIndexData* data);
 
   // Bourbon path for Get Request
   void LevelRead(const ReadOptions& options, uint64_t file_number,
                  uint64_t file_size, const Slice& k, void* arg,
-                 void (*handle_result)(void*, const Slice&, const Slice&), int level,
-                 FileMetaData* meta = nullptr, uint64_t lower = 0, uint64_t upper = 0, bool learned = false, Version* version = nullptr);
-
+                 void (*handle_result)(void*, const Slice&, const Slice&),
+                 int level, FileMetaData* meta = nullptr, uint64_t lower = 0,
+                 uint64_t upper = 0, bool learned = false,
+                 Version* version = nullptr);
 
  private:
   Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**);
-  Cache::Handle* FindFile(const ReadOptions& options, uint64_t file_number, uint64_t file_size);
+  Cache::Handle* FindFile(const ReadOptions& options, uint64_t file_number,
+                          uint64_t file_size);
 
   Env* const env_;
   const std::string dbname_;

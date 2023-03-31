@@ -4,11 +4,12 @@
 
 #include "db/filename.h"
 
+#include "db/dbformat.h"
 #include <ctype.h>
 #include <stdio.h>
 
-#include "db/dbformat.h"
 #include "leveldb/env.h"
+
 #include "util/logging.h"
 
 namespace leveldb {
