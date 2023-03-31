@@ -8,6 +8,7 @@
 // port/port_config.h availability is automatically detected via __has_include
 // in newer compilers. If LEVELDB_HAS_PORT_CONFIG_H is defined, it overrides the
 // configuration detection.
+
 #if defined(LEVELDB_HAS_PORT_CONFIG_H)
 
 #if LEVELDB_HAS_PORT_CONFIG_H
@@ -28,17 +29,25 @@
 #if HAVE_SNAPPY
 #include <snappy.h>
 #endif  // HAVE_SNAPPY
+#if HAVE_ZLIB
+#include <zlib.h>
+#endif  // HAVE_ZLIB
 
 #include <cassert>
 #include <condition_variable>  // NOLINT
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <mutex>  // NOLINT
 #include <string>
 
 #include "port/thread_annotations.h"
 
 namespace leveldb {
+
+extern void EncodeFixed32(char* dst, uint32_t value);
+extern uint32_t DecodeFixed32(const char* ptr);
+
 namespace port {
 
 static const bool kLittleEndian = !LEVELDB_IS_BIG_ENDIAN;
@@ -126,6 +135,89 @@ inline bool Snappy_Uncompress(const char* input, size_t length, char* output) {
   (void)output;
   return false;
 #endif  // HAVE_SNAPPY
+}
+
+#if HAVE_ZLIB
+constexpr static const uint32_t zlib_comp_header_len = 4;
+#endif
+
+inline bool Zlib_Compress(const char* input, size_t length,
+                          std::string* output) {
+#if HAVE_ZLIB
+  z_stream zs;
+  memset(&zs, 0, sizeof(zs));
+
+  if (deflateInit(&zs, Z_DEFAULT_COMPRESSION) != Z_OK) {
+    return false;
+  }
+  output->resize(zlib_comp_header_len + deflateBound(&zs, length));
+
+  zs.next_in = (Bytef*)input;
+  zs.avail_in = length;
+  zs.next_out = (Bytef*)&(*output)[zlib_comp_header_len];
+  zs.avail_out = output->length();
+  if (deflate(&zs, Z_FINISH) != Z_STREAM_END) {
+    deflateEnd(&zs);
+    return false;
+  }
+  EncodeFixed32(&(*output)[0], zs.total_out);
+  output->resize(zlib_comp_header_len + zs.total_out);
+  return true;
+#else
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
+  (void)output;
+  return false;
+#endif
+}
+
+inline bool Zlib_GetUncompressedLength(const char* input, size_t length,
+                                       size_t* result) {
+#if HAVE_ZLIB
+  assert(length > 4);
+  *result = DecodeFixed32(input);
+  return true;
+#else   // HAVE_ZLIB
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
+  (void)result;
+  return false;
+#endif  // HAVE_ZLIB
+}
+
+inline bool Zlib_Uncompress(const char* input, size_t length, char* output) {
+#if HAVE_ZLIB
+  z_stream zs;
+  memset(&zs, 0, sizeof(zs));
+
+  if (inflateInit(&zs) != Z_OK) {
+    return false;
+  }
+
+  size_t result_len;
+  Zlib_GetUncompressedLength(input, length, &result_len);
+
+  zs.next_in = (Bytef*)input;
+  zs.avail_in = length;
+  zs.next_out = (Bytef*)(output + zlib_comp_header_len);
+  zs.avail_out = result_len;
+
+  if (inflate(&zs, Z_FINISH) != Z_STREAM_END) {
+    inflateEnd(&zs);
+    return false;
+  }
+
+  return true;
+#else
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
+
+  (void)output;
+  return false;
+#endif
 }
 
 inline bool GetHeapProfile(void (*func)(void*, const char*, int), void* arg) {

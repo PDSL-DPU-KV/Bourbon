@@ -152,9 +152,10 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
   switch (type) {
-    case kNoCompression:
+    case kNoCompression: {
       block_contents = raw;
       break;
+    }
 
     case kSnappyCompression: {
       std::string* compressed = &r->compressed_output;
@@ -169,7 +170,20 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       }
       break;
     }
+
+    case kZlibCompression: {
+      std::string* compressed = &r->compressed_output;
+      if (port::Zlib_Compress(raw.data(), raw.size(), compressed)) {
+        block_contents = *compressed;
+      } else {
+        // Zlib not supported, so just store uncompressed form
+        block_contents = raw;
+        type = kNoCompression;
+      }
+      break;
+    }
   }
+
   WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();
   block->Reset();
