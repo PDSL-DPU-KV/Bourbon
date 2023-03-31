@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ~/build
+cd build
 
 # YCSB A B D F
 rm -rf *
@@ -57,6 +57,6 @@ for dist in ycsb-c-10-10; do
     ./read_cold -k 16 -v 64 -d /mnt/ssd/ycsb_default -m 8 -u -n 10000 --change_level_load -i 5 $* --YCSB /mnt/db/ycsb/${dist}.txt > ../evaluation/ycsb_baseline_${dist}.txt
 done
 
-cd ~
+cd ..
 python3 scripts/collect_results.py 4 > evaluation/expr_ycsb.txt
 cat evaluation/expr_ycsb.txt

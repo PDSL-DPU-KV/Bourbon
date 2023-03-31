@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ~/build
+cd build
 
 # Request distributions
 for dist in uniform zipfian sequential hotspot latest exponential; do
@@ -17,6 +17,6 @@ for dist in uniform zipfian sequential hotspot latest exponential; do
     ./read_cold -f /mnt/db/dataset/osm_ny.txt -k 16 -v 64 -d /mnt/ssd/db_osm_random -m 8 -u -n 10000 -i 5 $* --distribution /mnt/db/distribution/${dist}-20-10.txt > ../evaluation/osm_baseline_${dist}.txt
 done
 
-cd ~
+cd ..
 python3 scripts/collect_results.py 3 > evaluation/expr_request_dist.txt
 cat evaluation/expr_request_dist.txt

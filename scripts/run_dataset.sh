@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ~/build
+cd build
 
 # Datasets (file)
 for dist in linear segmented1p segmented10p normal; do
@@ -32,6 +32,6 @@ sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
 ./read_cold -f /mnt/db/dataset/osm_ny.txt -k 16 -v 64 -d /mnt/ssd/db_osm -m 7 -u -n 10000 -i 5 $* > ../evaluation/osm_llsm_level.txt
 ./read_cold -f /mnt/db/dataset/osm_ny.txt -k 16 -v 64 -d /mnt/ssd/db_osm -m 7 -u -n 10000 -i 5 $* > ../evaluation/osm_llsm_level.txt
 
-cd ~
+cd ..
 python3 scripts/collect_results.py 1 > evaluation/expr_dataset.txt
 cat evaluation/expr_dataset.txt

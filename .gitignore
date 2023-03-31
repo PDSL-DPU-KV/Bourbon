@@ -9,3 +9,5 @@ cmake-*
 # Build directory.
 build/
 out/
+
+.cache/
