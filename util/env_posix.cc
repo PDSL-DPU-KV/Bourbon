@@ -545,7 +545,7 @@ class PosixEnv : public Env {
 
 
   // test use only
-  void NewRandomAccessFileLearned(const std::string& filename, RandomAccessFile** result) {
+  void NewRandomAccessFileLearned(const std::string& filename, RandomAccessFile** result) override {
     int fd = ::open(filename.c_str(), O_RDONLY);
     //*result = new PosixRandomAccessFile(filename, fd, &fd_limiter_);
 
@@ -844,7 +844,7 @@ class PosixEnv : public Env {
     env->PrepareLearn();
   }
 
-  void PrepareLearning(uint64_t time_start, int level, FileMetaData* meta) {
+  void PrepareLearning(uint64_t time_start, int level, FileMetaData* meta) override {
     if (adgMod::fresh_write || (adgMod::MOD != 6 && adgMod::MOD != 7 && adgMod::MOD != 9)) return;
     MutexLock guard(&prepare_queue_mutex);
     if (!preparing_thread_started) {
