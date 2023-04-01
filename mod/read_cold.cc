@@ -10,8 +10,10 @@
 
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
+#include "leveldb/options.h"
 
 #include "../db/version_set.h"
+#include "../util/testutil.h"
 #include "cxxopts.hpp"
 #include "learned_index.h"
 #include "stats.h"
@@ -87,6 +89,18 @@ enum LoadType {
   RandomChunk = 4
 };
 
+CompressionType GetCompressionType(string compression_type) {
+  if (compression_type == "none") {
+    return kNoCompression;
+  } else if (compression_type == "snappy") {
+    return kSnappyCompression;
+  } else if (compression_type == "zlib") {
+    return kZlibCompression;
+  } else {
+    return kNoCompression;
+  }
+}
+
 int main(int argc, char* argv[]) {
   int rc;
   int num_operations, num_iteration, num_mix;
@@ -100,6 +114,8 @@ int main(int argc, char* argv[]) {
       change_file_learning;
   int load_type, insert_bound;
   string db_location_copy;
+  double compression_ratio;
+  string compression_type;
 
   string output;
 
@@ -168,7 +184,12 @@ int main(int argc, char* argv[]) {
       "insert", "insert new value",
       cxxopts::value<int>(insert_bound)->default_value("0"))(
       "output", "output key list",
-      cxxopts::value<string>(output)->default_value("key_list.txt"));
+      cxxopts::value<string>(output)->default_value("key_list.txt"))(
+      "cr", "compression ratio",
+      cxxopts::value<double>(compression_ratio)->default_value("0.0"))(
+      "ct", "compression type",
+      cxxopts::value<string>(compression_type)
+          ->default_value("kNoCompression"));
   auto result = commandline_options.parse(argc, argv);
   if (result.count("help")) {
     printf("%s", commandline_options.help().c_str());
@@ -230,7 +251,8 @@ int main(int argc, char* argv[]) {
 
   adgMod::Stats* instance = adgMod::Stats::GetInstance();
   vector<vector<size_t>> times(20);
-  string values(1024 * 1024, '0');
+  // string values(1024 * 1024, '0');
+  test::RandomGenerator gen(compression_ratio);
 
   if (copy_out) {
     rc = system("sync; echo 3 | sudo tee /proc/sys/vm/drop_caches");
@@ -251,8 +273,8 @@ int main(int argc, char* argv[]) {
         0, (uint64_t)keys.size() - 1);
     std::uniform_int_distribution<uint64_t> uniform_dist_file2(
         0, (uint64_t)keys.size() - 1);
-    std::uniform_int_distribution<uint64_t> uniform_dist_value(
-        0, (uint64_t)values.size() - adgMod::value_size - 1);
+    // std::uniform_int_distribution<uint64_t> uniform_dist_value(
+    //     0, (uint64_t)values.size() - adgMod::value_size - 1);
 
     DB* db;
     Options options;
@@ -265,6 +287,7 @@ int main(int argc, char* argv[]) {
     // adgMod::block_restart_interval = options.block_restart_interval =
     // adgMod::MOD == 8 || adgMod::MOD == 7 ? 1 :
     // adgMod::block_restart_interval; read_options.fill_cache = true;
+    options.compression = GetCompressionType(compression_type);
     write_options.sync = false;
     instance->ResetAll();
 
@@ -300,7 +323,7 @@ int main(int argc, char* argv[]) {
           }
           break;
         }
-        case Random: {
+        case LoadType::Random: {
           std::random_shuffle(keys.begin(), keys.end());
           for (int cut = 0; cut < cut_size; ++cut) {
             chunks.emplace_back(keys.size() * cut / cut_size,
@@ -324,10 +347,10 @@ int main(int argc, char* argv[]) {
       for (int cut = 0; cut < chunks.size(); ++cut) {
         for (int i = chunks[cut].first; i < chunks[cut].second; ++i) {
           // cout << keys[i] << endl;
-
           status = db->Put(write_options, keys[i],
-                           {values.data() + uniform_dist_value(e2),
-                            (uint64_t)adgMod::value_size});
+                           //  {values.data() + uniform_dist_value(e2),
+                           //   (uint64_t)adgMod::value_size}
+                           gen.Generate(adgMod::value_size));
 
           assert(status.ok() && "File Put Error");
         }
@@ -423,8 +446,9 @@ int main(int argc, char* argv[]) {
           instance->StartTimer(10);
           status =
               db->Put(write_options, generate_key(to_string(distribution[i])),
-                      {values.data() + uniform_dist_value(e3),
-                       (uint64_t)adgMod::value_size});
+                      // {values.data() + uniform_dist_value(e3),
+                      //  (uint64_t)adgMod::value_size}
+                      gen.Generate(adgMod::value_size));
           instance->PauseTimer(10);
         } else {
           uint64_t index;
@@ -441,13 +465,15 @@ int main(int argc, char* argv[]) {
             // ycsb insert
             status = db->Put(write_options,
                              generate_key(to_string(10000000000 + index)),
-                             {values.data() + uniform_dist_value(e3),
-                              (uint64_t)adgMod::value_size});
+                             //  {values.data() + uniform_dist_value(e3),
+                             //   (uint64_t)adgMod::value_size}
+                             gen.Generate(adgMod::value_size));
           } else {
             // other write
             status = db->Put(write_options, keys[index],
-                             {values.data() + uniform_dist_value(e3),
-                              (uint64_t)adgMod::value_size});
+                             //  {values.data() + uniform_dist_value(e3),
+                             //   (uint64_t)adgMod::value_size}
+                             gen.Generate(adgMod::value_size));
           }
           instance->PauseTimer(10);
           assert(status.ok() && "Mix Put Error");

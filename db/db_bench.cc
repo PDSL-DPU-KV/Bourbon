@@ -121,38 +121,6 @@ namespace leveldb {
 namespace {
 leveldb::Env* g_env = nullptr;
 
-// Helper for quickly generating random data.
-class RandomGenerator {
- private:
-  std::string data_;
-  int pos_;
-
- public:
-  RandomGenerator() {
-    // We use a limited amount of data over and over again and ensure
-    // that it is larger than the compression window (32KB), and also
-    // large enough to serve all typical value sizes we want to write.
-    Random rnd(301);
-    std::string piece;
-    while (data_.size() < 1048576) {
-      // Add a short fragment that is as compressible as specified
-      // by FLAGS_compression_ratio.
-      test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
-      data_.append(piece);
-    }
-    pos_ = 0;
-  }
-
-  Slice Generate(size_t len) {
-    if (pos_ + len > data_.size()) {
-      pos_ = 0;
-      assert(len < data_.size());
-    }
-    pos_ += len;
-    return Slice(data_.data() + pos_ - len, len);
-  }
-};
-
 #if defined(__linux)
 static Slice TrimSpace(Slice s) {
   size_t start = 0;
@@ -640,7 +608,7 @@ class Benchmark {
   }
 
   void SnappyCompress(ThreadState* thread) {
-    RandomGenerator gen;
+    test::RandomGenerator gen(FLAGS_compression_ratio);
     Slice input = gen.Generate(Options().block_size);
     int64_t bytes = 0;
     int64_t produced = 0;
@@ -665,7 +633,7 @@ class Benchmark {
   }
 
   void SnappyUncompress(ThreadState* thread) {
-    RandomGenerator gen;
+    test::RandomGenerator gen(FLAGS_compression_ratio);
     Slice input = gen.Generate(Options().block_size);
     std::string compressed;
     bool ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
@@ -724,7 +692,7 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-    RandomGenerator gen;
+    test::RandomGenerator gen(FLAGS_compression_ratio);
     WriteBatch batch;
     Status s;
     int64_t bytes = 0;
@@ -836,7 +804,7 @@ class Benchmark {
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
-    RandomGenerator gen;
+    test::RandomGenerator gen(FLAGS_compression_ratio);
     WriteBatch batch;
     Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
@@ -865,7 +833,7 @@ class Benchmark {
       ReadRandom(thread);
     } else {
       // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
+      test::RandomGenerator gen(FLAGS_compression_ratio);
       while (true) {
         {
           MutexLock l(&thread->shared->mu);
