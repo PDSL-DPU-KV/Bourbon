@@ -157,7 +157,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_comparator_)),
       version_count(0) {
   adgMod::db = this;
-  vlog = new adgMod::VLog(dbname_ + "/vlog.txt");
+  vlog = new adgMod::VLog(dbname_ + "/vlog.txt", options_.compression);
 }
 
 DBImpl::~DBImpl() {
@@ -1391,10 +1391,11 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
   if (adgMod::MOD >= 7) {
-    uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+    // value address and value size
+    auto result = adgMod::db->vlog->AddRecord(key, val);
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
-    EncodeFixed64(buffer, value_address);
-    EncodeFixed32(buffer + sizeof(uint64_t), val.size());
+    EncodeFixed64(buffer, result.first);
+    EncodeFixed32(buffer + sizeof(uint64_t), result.second);
     return DB::Put(o, key,
                    (Slice){buffer, sizeof(uint64_t) + sizeof(uint32_t)});
   } else {

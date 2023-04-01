@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
       "output", "output key list",
       cxxopts::value<string>(output)->default_value("key_list.txt"))(
       "cr", "compression ratio",
-      cxxopts::value<double>(compression_ratio)->default_value("0.0"))(
+      cxxopts::value<double>(compression_ratio)->default_value("1.0"))(
       "ct", "compression type",
       cxxopts::value<string>(compression_type)
           ->default_value("kNoCompression"));

@@ -7,6 +7,7 @@
 #define LEVELDB_VLOG_H
 
 #include "leveldb/env.h"
+#include "leveldb/options.h"
 
 using namespace leveldb;
 
@@ -18,12 +19,13 @@ class VLog {
   RandomAccessFile* reader;
   std::string buffer;
   uint64_t vlog_size;
+  CompressionType type;
 
   void Flush();
 
  public:
-  explicit VLog(const std::string& vlog_name);
-  uint64_t AddRecord(const Slice& key, const Slice& value);
+  explicit VLog(const std::string& vlog_name, CompressionType type);
+  std::pair<uint64_t, uint64_t> AddRecord(const Slice& key, const Slice& value);
   std::string ReadRecord(uint64_t address, uint32_t size);
   void Sync();
   ~VLog();
