@@ -11,6 +11,7 @@
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
+#include "leveldb/slice.h"
 #include "leveldb/write_batch.h"
 
 #include "port/port.h"
@@ -113,6 +114,8 @@ static bool FLAGS_reuse_logs = false;
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
 
+static const char* FLAGS_compression_type = "";
+
 // #define __OPTIMIZE__
 // #define NDEBUG
 
@@ -120,6 +123,18 @@ namespace leveldb {
 
 namespace {
 leveldb::Env* g_env = nullptr;
+
+CompressionType GetCompressionType(string compression_type) {
+  if (compression_type == "none") {
+    return kNoCompression;
+  } else if (compression_type == "snappy") {
+    return kSnappyCompression;
+  } else if (compression_type == "zlib") {
+    return kZlibCompression;
+  } else {
+    return kNoCompression;
+  }
+}
 
 #if defined(__linux)
 static Slice TrimSpace(Slice s) {
@@ -310,6 +325,7 @@ class Benchmark {
     fprintf(stdout, "FileSize:   %.1f MB (estimated)\n",
             (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_) /
              1048576.0));
+    fprintf(stdout, "Compression Type: %s\n", FLAGS_compression_type);
     PrintWarnings();
     fprintf(stdout, "------------------------------------------------\n");
   }
@@ -666,6 +682,7 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
+    options.compression = GetCompressionType(FLAGS_compression_type);
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
@@ -905,6 +922,8 @@ int main(int argc, char** argv) {
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
+    } else if (leveldb::Slice(argv[i]).starts_with("--compression_type=")) {
+      FLAGS_compression_type = argv[i] + strlen("--compression_type=");
     } else if (sscanf(argv[i], "--compression_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_compression_ratio = d;
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
