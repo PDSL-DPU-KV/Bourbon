@@ -119,7 +119,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
     }
     delete[] buf;
   }
-  return Status::OK();
+  return s;
 }
 
 }  // namespace leveldb

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include "leveldb/options.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
@@ -50,7 +51,7 @@ inline std::pair<CompressionType, Slice> Compress(
 inline Status Uncompress(CompressionType type, const char* data, size_t n,
                          Slice* result) {
   switch (type) {
-    case kNoCompression: {
+    case kNoCompression: {  // unreachable
       return Status::OK();
     }
     case kSnappyCompression: {

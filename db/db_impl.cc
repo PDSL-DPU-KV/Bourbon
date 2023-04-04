@@ -157,7 +157,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_comparator_)),
       version_count(0) {
   adgMod::db = this;
-  vlog = new adgMod::VLog(dbname_ + "/vlog.txt", options_.compression);
+  vlog = new adgMod::VLog(dbname_ + "/vlog.txt", options_.vlog_compression);
 }
 
 DBImpl::~DBImpl() {

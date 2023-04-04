@@ -25,7 +25,7 @@ class VLog {
 
  public:
   explicit VLog(const std::string& vlog_name, CompressionType type);
-  std::pair<uint64_t, uint64_t> AddRecord(const Slice& key, const Slice& value);
+  std::pair<uint64_t, uint32_t> AddRecord(const Slice& key, const Slice& value);
   std::string ReadRecord(uint64_t address, uint32_t size);
   void Sync();
   ~VLog();

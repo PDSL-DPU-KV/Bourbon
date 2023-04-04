@@ -160,7 +160,8 @@ inline bool Zlib_Compress(const char* input, size_t length,
     deflateEnd(&zs);
     return false;
   }
-  EncodeFixed32(&(*output)[0], zs.total_out);
+  deflateEnd(&zs);
+  EncodeFixed32(&(*output)[0], length);
   output->resize(zlib_comp_header_len + zs.total_out);
   return true;
 #else
@@ -199,16 +200,16 @@ inline bool Zlib_Uncompress(const char* input, size_t length, char* output) {
   size_t result_len;
   Zlib_GetUncompressedLength(input, length, &result_len);
 
-  zs.next_in = (Bytef*)input;
+  zs.next_in = (Bytef*)(input + zlib_comp_header_len);
   zs.avail_in = length;
-  zs.next_out = (Bytef*)(output + zlib_comp_header_len);
+  zs.next_out = (Bytef*)output;
   zs.avail_out = result_len;
 
   if (inflate(&zs, Z_FINISH) != Z_STREAM_END) {
     inflateEnd(&zs);
     return false;
   }
-
+  inflateEnd(&zs);
   return true;
 #else
   // Silence compiler warnings about unused arguments.

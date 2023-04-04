@@ -5,12 +5,14 @@
 #include "Vlog.h"
 
 #include "db/version_set.h"
+#include <cassert>
 #include <cstdint>
 #include <fcntl.h>
 #include <sys/stat.h>
 
 #include "leveldb/options.h"
 
+#include "port/port_stdcxx.h"
 #include "util/coding.h"
 #include "util/compress.hh"
 
@@ -33,22 +35,24 @@ VLog::VLog(const std::string& vlog_name, CompressionType type)
 }
 
 // warning: we do not save the compression type in vlog
-std::pair<uint64_t, uint64_t> VLog::AddRecord(const Slice& key,
+std::pair<uint64_t, uint32_t> VLog::AddRecord(const Slice& key,
                                               const Slice& value) {
   PutLengthPrefixedSlice(&buffer, key);
   uint64_t result = 0;
-  uint64_t result_size = value.size();
+  uint32_t result_size = 0;
   if (type != leveldb::kNoCompression) {
     string compressed;
-    Compress(type, value, &compressed);
+    auto s = Compress(type, value, &compressed);
+    assert(s.first == type);
     PutVarint32(&buffer, compressed.size());
     result = vlog_size + buffer.size();
-    buffer.append(compressed);
+    buffer.append(compressed.data(), compressed.size());
     result_size = compressed.size();
   } else {
     PutVarint32(&buffer, value.size());
     result = vlog_size + buffer.size();
     buffer.append(value.data(), value.size());
+    result_size = value.size();
   }
   if (buffer.size() >= buffer_size_max) Flush();
   return {result, result_size};
@@ -69,8 +73,10 @@ string VLog::ReadRecord(uint64_t address, uint32_t size) {
   string result;
   if (type != leveldb::kNoCompression) {
     Slice uncompressed;
-    Uncompress(type, p, size, &uncompressed);
-    result.append(result.data(), result.size());
+    auto s = Uncompress(type, p, size, &uncompressed);
+    assert(s.ok());
+    result.append(uncompressed.data(), uncompressed.size());
+    delete[] uncompressed.data();
   } else {
     result.append(p, size);
   }

@@ -130,7 +130,7 @@ void TableBuilder::Flush() {
   if (!ok()) return;
   if (r->data_block.empty()) return;
   assert(!r->pending_index_entry);
-  WriteBlock(&r->data_block, &r->pending_handle);
+  WriteBlock(false, &r->data_block, &r->pending_handle);
   if (ok()) {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
@@ -140,7 +140,8 @@ void TableBuilder::Flush() {
   }
 }
 
-void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
+void TableBuilder::WriteBlock(bool is_index_block, BlockBuilder* block,
+                              BlockHandle* handle) {
   // File format contains a sequence of blocks where each block has:
   //    block_data: uint8[n]
   //    type: uint8
@@ -149,7 +150,9 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   Rep* r = rep_;
   Slice raw = block->Finish();
 
-  auto result = Compress(r->options.compression, raw, &r->compressed_output);
+  auto want = is_index_block ? kNoCompression : r->options.compression;
+
+  auto result = Compress(want, raw, &r->compressed_output);
 
   WriteRawBlock(result.second, result.first, handle);
   r->compressed_output.clear();
@@ -204,7 +207,7 @@ Status TableBuilder::Finish() {
     }
 
     // TODO(postrelease): Add stats and other meta blocks
-    WriteBlock(&meta_index_block, &metaindex_block_handle);
+    WriteBlock(true, &meta_index_block, &metaindex_block_handle);
   }
 
   // Write index block
@@ -216,7 +219,7 @@ Status TableBuilder::Finish() {
       r->index_block.Add(r->last_key, Slice(handle_encoding));
       r->pending_index_entry = false;
     }
-    WriteBlock(&r->index_block, &index_block_handle);
+    WriteBlock(true, &r->index_block, &index_block_handle);
   }
 
   // Write footer

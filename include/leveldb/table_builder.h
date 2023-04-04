@@ -81,7 +81,8 @@ class LEVELDB_EXPORT TableBuilder {
 
  private:
   bool ok() const { return status().ok(); }
-  void WriteBlock(BlockBuilder* block, BlockHandle* handle);
+  void WriteBlock(bool is_index_block, BlockBuilder* block,
+                  BlockHandle* handle);
   void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
 
   struct Rep;

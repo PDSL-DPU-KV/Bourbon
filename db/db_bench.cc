@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "db/db_impl.h"
+#include "db/version_set.h"
 #include <mod/util.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +22,8 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+
+#include "mod/stats.h"
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -59,7 +63,8 @@ static const char* FLAGS_benchmarks =
     "fill100K,"
     "crc32c,"
     "snappycomp,"
-    "snappyuncomp,";
+    "snappyuncomp,"
+    "offlearn";
 
 // Number of key/values to place in database
 static int FLAGS_num = 1000000;
@@ -115,6 +120,8 @@ static bool FLAGS_reuse_logs = false;
 static const char* FLAGS_db = nullptr;
 
 static const char* FLAGS_compression_type = "";
+
+static const char* FLAGS_vlog_compression_type = "";
 
 // #define __OPTIMIZE__
 // #define NDEBUG
@@ -243,6 +250,10 @@ class Stats {
   void Report(const Slice& name) {
     // Pretend at least one op was done in case we are running a benchmark
     // that does not call FinishedSingleOp().
+    if (name == "offlearn") {
+      fprintf(stdout, "offline learn: complete\n");
+      return;
+    }
     if (done_ < 1) done_ = 1;
 
     std::string extra;
@@ -506,6 +517,8 @@ class Benchmark {
         PrintStats("leveldb.stats");
       } else if (name == Slice("sstables")) {
         PrintStats("leveldb.sstables");
+      } else if (name == Slice("offlearn")) {
+        method = &Benchmark::OffLearn;
       } else {
         if (!name.empty()) {  // No error message for empty name
           fprintf(stderr, "unknown benchmark '%s'\n", name.ToString().c_str());
@@ -683,6 +696,7 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
     options.compression = GetCompressionType(FLAGS_compression_type);
+    options.vlog_compression = GetCompressionType(FLAGS_vlog_compression_type);
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
@@ -699,6 +713,28 @@ class Benchmark {
   }
 
   void WriteSeq(ThreadState* thread) { DoWrite(thread, true); }
+
+  void OffLearn(ThreadState* thread) {
+    if (adgMod::MOD == 6 || adgMod::MOD == 7 || adgMod::MOD == 9) {
+      auto db = (DBImpl*)(db_);
+      db->vlog->Sync();
+      db->WaitForBackground();
+      Version* current = db->versions_->current();
+      // offline level learning
+      for (int i = 1; i < config::kNumLevels; ++i) {
+        adgMod::LearnedIndexData::LevelLearn(new adgMod::VersionAndSelf{
+            current, adgMod::db->version_count,
+            current->learned_index_data_[i].get(), i});
+      }
+
+      // offline file learning
+      current->FileLearn();
+      db->WaitForBackground();
+      delete db_;
+      db_ = nullptr;
+      Open();
+    }
+  }
 
   void WriteRandom(ThreadState* thread) { DoWrite(thread, false); }
 
@@ -924,6 +960,10 @@ int main(int argc, char** argv) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
     } else if (leveldb::Slice(argv[i]).starts_with("--compression_type=")) {
       FLAGS_compression_type = argv[i] + strlen("--compression_type=");
+    } else if (leveldb::Slice(argv[i]).starts_with(
+                   "--vlog_compression_type=")) {
+      FLAGS_vlog_compression_type =
+          argv[i] + strlen("--vlog_compression_type=");
     } else if (sscanf(argv[i], "--compression_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_compression_ratio = d;
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
@@ -966,7 +1006,8 @@ int main(int argc, char** argv) {
   }
 
   leveldb::g_env = leveldb::Env::Default();
-
+  auto stats = adgMod::Stats::GetInstance();
+  stats->ResetAll();
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == nullptr) {
     leveldb::g_env->GetTestDirectory(&default_db_path);
