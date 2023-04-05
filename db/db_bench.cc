@@ -337,6 +337,7 @@ class Benchmark {
             (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_) /
              1048576.0));
     fprintf(stdout, "Compression Type: %s\n", FLAGS_compression_type);
+    fprintf(stdout, "VLog Compression Type: %s\n", FLAGS_vlog_compression_type);
     PrintWarnings();
     fprintf(stdout, "------------------------------------------------\n");
   }
