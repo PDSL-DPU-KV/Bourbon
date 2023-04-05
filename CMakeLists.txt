@@ -57,6 +57,7 @@ check_library_exists(crc32c crc32c_value "" HAVE_CRC32C)
 check_library_exists(snappy snappy_compress "" HAVE_SNAPPY)
 check_library_exists(tcmalloc malloc "" HAVE_TCMALLOC)
 check_library_exists(z deflate "" HAVE_ZLIB)
+check_library_exists(lz4 LZ4_compress "" HAVE_LZ4)
 
 include(CheckCXXSymbolExists)
 
@@ -311,6 +312,10 @@ endif(HAVE_TCMALLOC)
 if(HAVE_ZLIB)
   target_link_libraries(leveldb z)
 endif(HAVE_ZLIB)
+
+if(HAVE_LZ4)
+  target_link_libraries(leveldb lz4)
+endif(HAVE_LZ4)
 
 # Needed by port_stdcxx.h
 find_package(Threads REQUIRED)

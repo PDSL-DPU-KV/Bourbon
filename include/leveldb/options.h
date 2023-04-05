@@ -31,6 +31,7 @@ enum CompressionType {
   kNoCompression = 0x0,
   kSnappyCompression = 0x1,
   kZlibCompression = 0x2,
+  kLZ4Compression = 0x3,
 };
 
 // Options to control the behavior of a database (passed to DB::Open)

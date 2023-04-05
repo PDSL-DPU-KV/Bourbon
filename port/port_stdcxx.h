@@ -32,6 +32,9 @@
 #if HAVE_ZLIB
 #include <zlib.h>
 #endif  // HAVE_ZLIB
+#if HAVE_LZ4
+#include <lz4.h>
+#endif  // HAVE_LZ4
 
 #include <cassert>
 #include <condition_variable>  // NOLINT
@@ -150,12 +153,13 @@ inline bool Zlib_Compress(const char* input, size_t length,
   if (deflateInit(&zs, Z_DEFAULT_COMPRESSION) != Z_OK) {
     return false;
   }
-  output->resize(zlib_comp_header_len + deflateBound(&zs, length));
+  auto compress_bound = deflateBound(&zs, length);
+  output->resize(zlib_comp_header_len + compress_bound);
 
   zs.next_in = (Bytef*)input;
   zs.avail_in = length;
   zs.next_out = (Bytef*)&(*output)[zlib_comp_header_len];
-  zs.avail_out = output->length();
+  zs.avail_out = compress_bound;
   if (deflate(&zs, Z_FINISH) != Z_STREAM_END) {
     deflateEnd(&zs);
     return false;
@@ -201,7 +205,7 @@ inline bool Zlib_Uncompress(const char* input, size_t length, char* output) {
   Zlib_GetUncompressedLength(input, length, &result_len);
 
   zs.next_in = (Bytef*)(input + zlib_comp_header_len);
-  zs.avail_in = length;
+  zs.avail_in = length - zlib_comp_header_len;
   zs.next_out = (Bytef*)output;
   zs.avail_out = result_len;
 
@@ -215,7 +219,70 @@ inline bool Zlib_Uncompress(const char* input, size_t length, char* output) {
   // Silence compiler warnings about unused arguments.
   (void)input;
   (void)length;
+  (void)output;
+  return false;
+#endif
+}
 
+#if HAVE_LZ4
+constexpr static const uint32_t lz4_comp_header_len = 4;
+#endif
+
+inline bool LZ4_Compress(const char* input, size_t length,
+                         std::string* output) {
+#ifdef HAVE_LZ4
+  int compress_bound = LZ4_compressBound(static_cast<int>(length));
+  output->resize(static_cast<size_t>(lz4_comp_header_len + compress_bound));
+
+  int compressed_data_size = LZ4_compress_default(
+      input, &(*output)[lz4_comp_header_len], length, compress_bound);
+  if (compressed_data_size <= 0) {
+    return false;
+  }
+
+  EncodeFixed32(&(*output)[0], length);
+  output->resize(
+      static_cast<size_t>(lz4_comp_header_len + compressed_data_size));
+
+  return true;
+#else  // HAVE_LZ4
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
+  (void)output;
+  return false;
+#endif
+}
+
+inline bool LZ4_GetUncompressedLength(const char* input, size_t length,
+                                      size_t* result) {
+#if HAVE_LZ4
+  assert(length > lz4_comp_header_len);
+  *result = DecodeFixed32(input);
+  return true;
+#else   // HAVE_LZ4
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
+  (void)result;
+  return false;
+#endif  // HAVE_LZ4
+}
+
+inline bool LZ4_Uncompress(const char* input, size_t length, char* output) {
+#ifdef HAVE_LZ4
+
+  size_t result_len;
+  LZ4_GetUncompressedLength(input, length, &result_len);
+
+  int decompressed_data_size =
+      LZ4_decompress_safe(input + lz4_comp_header_len, output,
+                          length - lz4_comp_header_len, result_len);
+  return decompressed_data_size == result_len;
+#else  // LZ4
+  // Silence compiler warnings about unused arguments.
+  (void)input;
+  (void)length;
   (void)output;
   return false;
 #endif

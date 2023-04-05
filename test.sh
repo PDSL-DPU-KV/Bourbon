@@ -1,9 +1,12 @@
 #!/bin/bash
 
 mod_arr=(0 8)
-compression_type_arr=("none" "snappy" "zlib")
-compression_ratio_arr=(0.2 0.5 0.8)
-value_size_arr=(128 512 1024 2048 4096)
+# compression_type_arr=("none" "snappy" "zlib")
+compression_type_arr=("lz4")
+# compression_ratio_arr=(0.2 0.5 0.8)
+compression_ratio_arr=(0.5)
+# value_size_arr=(128 512 1024 2048 4096)
+value_size_arr=(4096)
 num=1000000
 max_file_size_arr=(2097152 67108864)
 test_path="/home/lsc/codebase/Bourbon/test/bourbon-test/"

@@ -12,3 +12,5 @@ out/
 
 .cache/
 test/
+result_log*
+space_log*

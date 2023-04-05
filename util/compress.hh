@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+
 #include "leveldb/options.h"
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
@@ -44,6 +45,17 @@ inline std::pair<CompressionType, Slice> Compress(
       }
       break;
     }
+    case kLZ4Compression: {
+      if (port::LZ4_Compress(raw.data(), raw.size(), compressed_output)) {
+        result = *compressed_output;
+        type = want;
+      } else {
+        // Zlib not supported, so just store uncompressed form
+        result = raw;
+        type = kNoCompression;
+      }
+      break;
+    }
   }
   return {type, result};
 }
@@ -74,6 +86,19 @@ inline Status Uncompress(CompressionType type, const char* data, size_t n,
       }
       char* ubuf = new char[ulength];
       if (!port::Zlib_Uncompress(data, n, ubuf)) {
+        delete[] ubuf;
+        return Status::Corruption("corrupted compressed block contents");
+      }
+      *result = Slice(ubuf, ulength);
+      break;
+    }
+    case kLZ4Compression: {
+      size_t ulength = 0;
+      if (!port::LZ4_GetUncompressedLength(data, n, &ulength)) {
+        return Status::Corruption("corrupted compressed block contents");
+      }
+      char* ubuf = new char[ulength];
+      if (!port::LZ4_Uncompress(data, n, ubuf)) {
         delete[] ubuf;
         return Status::Corruption("corrupted compressed block contents");
       }

@@ -13,6 +13,7 @@
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
+#include "leveldb/options.h"
 #include "leveldb/slice.h"
 #include "leveldb/write_batch.h"
 
@@ -138,6 +139,8 @@ CompressionType GetCompressionType(string compression_type) {
     return kSnappyCompression;
   } else if (compression_type == "zlib") {
     return kZlibCompression;
+  } else if (compression_type == "lz4") {
+    return kLZ4Compression;
   } else {
     return kNoCompression;
   }
