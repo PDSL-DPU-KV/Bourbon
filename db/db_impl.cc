@@ -106,6 +106,7 @@ Options SanitizeOptions(const std::string& dbname,
   result.filter_policy = (src.filter_policy != nullptr) ? ipolicy : nullptr;
   ClipToRange(&result.max_open_files, 64 + kNumNonTableCacheFiles, 50000);
   ClipToRange(&result.write_buffer_size, 64 << 10, 1 << 30);
+  ClipToRange(&result.vlog_buffer_size, 256 * 1024, 256 * 1024 * 1024);
   ClipToRange(&result.max_file_size, 1 << 20, 1 << 30);
   ClipToRange(&result.block_size, 1 << 10, 4 << 20);
   if (result.info_log == nullptr) {
@@ -157,7 +158,8 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                                &internal_comparator_)),
       version_count(0) {
   adgMod::db = this;
-  vlog = new adgMod::VLog(dbname_ + "/vlog.txt", options_.vlog_compression);
+  vlog = new adgMod::VLog(dbname_ + "/vlog.txt", options_.vlog_compression,
+                          options_.vlog_buffer_size);
 }
 
 DBImpl::~DBImpl() {

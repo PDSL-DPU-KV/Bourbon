@@ -17,14 +17,17 @@ class VLog {
  private:
   WritableFile* writer;
   RandomAccessFile* reader;
-  std::string buffer;
+  char* buffer;
+  uint32_t pos;
   uint64_t vlog_size;
+  uint32_t buffer_size;
   CompressionType type;
 
   void Flush();
 
  public:
-  explicit VLog(const std::string& vlog_name, CompressionType type);
+  explicit VLog(const std::string& vlog_name, CompressionType type,
+                uint32_t buffer_size);
   std::pair<uint64_t, uint32_t> AddRecord(const Slice& key, const Slice& value);
   std::string ReadRecord(uint64_t address, uint32_t size);
   void Sync();

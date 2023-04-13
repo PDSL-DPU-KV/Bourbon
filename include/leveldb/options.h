@@ -136,6 +136,8 @@ struct LEVELDB_EXPORT Options {
   CompressionType compression = kNoCompression;
   CompressionType vlog_compression = kNoCompression;
 
+  uint32_t vlog_buffer_size = 256 * 1024;
+
   // EXPERIMENTAL: If true, append to existing MANIFEST and log files
   // when a database is opened.  This can significantly speed up open.
   //

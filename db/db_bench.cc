@@ -79,6 +79,8 @@ static int FLAGS_threads = 1;
 // Size of each value
 static int FLAGS_value_size = 100;
 
+static int FLAGS_vlog_buffer_size = 1024 * 1024;
+
 // Arrange to generate values that shrink to this fraction of
 // their original size after compression
 static double FLAGS_compression_ratio = 0.5;
@@ -694,6 +696,7 @@ class Benchmark {
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
+    options.vlog_buffer_size = FLAGS_vlog_buffer_size;
     options.max_file_size = FLAGS_max_file_size;
     options.block_size = FLAGS_block_size;
     options.max_open_files = FLAGS_open_files;
@@ -987,6 +990,8 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
       FLAGS_value_size = n;
+    } else if (sscanf(argv[i], "--vlog_buffer_size=%d%c", &n, &junk) == 1) {
+      FLAGS_vlog_buffer_size = n;
     } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
     } else if (sscanf(argv[i], "--max_file_size=%d%c", &n, &junk) == 1) {

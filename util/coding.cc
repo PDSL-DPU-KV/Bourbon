@@ -77,6 +77,13 @@ void PutVarint32(std::string* dst, uint32_t v) {
   char* ptr = EncodeVarint32(buf, v);
   dst->append(buf, ptr - buf);
 }
+int PutVarint32(char* dst, uint32_t v) {
+  char buf[5];
+  char* ptr = EncodeVarint32(buf, v);
+  int n = ptr - buf;
+  memcpy(dst, buf, n);
+  return n;
+}
 
 char* EncodeVarint64(char* dst, uint64_t v) {
   static const int B = 128;
@@ -98,6 +105,11 @@ void PutVarint64(std::string* dst, uint64_t v) {
 void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
   PutVarint32(dst, value.size());
   dst->append(value.data(), value.size());
+}
+int PutLengthPrefixedSlice(char* dst, const Slice& value) {
+  int n = PutVarint32(dst, value.size());
+  memcpy(&dst[n], value.data(), value.size());
+  return n + value.size();
 }
 
 int VarintLength(uint64_t v) {

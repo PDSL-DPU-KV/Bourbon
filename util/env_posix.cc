@@ -248,10 +248,11 @@ class PosixMmapReadableFile final : public RandomAccessFile {
 
 class PosixWritableFile final : public WritableFile {
  public:
-  PosixWritableFile(std::string filename, int fd)
+  PosixWritableFile(std::string filename, int fd, bool is_vlog)
       : pos_(0),
         fd_(fd),
         is_manifest_(IsManifest(filename)),
+        is_vlog_(is_vlog),
         filename_(std::move(filename)),
         dirname_(Dirname(filename_)) {}
 
@@ -263,6 +264,9 @@ class PosixWritableFile final : public WritableFile {
   }
 
   Status Append(const Slice& data) override {
+    if (is_vlog_) {
+      return WriteUnbuffered(data.data(), data.size());
+    }
     size_t write_size = data.size();
     const char* write_data = data.data();
 
@@ -432,6 +436,7 @@ class PosixWritableFile final : public WritableFile {
   int fd_;
 
   const bool is_manifest_;  // True if the file's name starts with MANIFEST.
+  const bool is_vlog_;
   const std::string filename_;
   const std::string dirname_;  // The directory of filename_.
 };
@@ -511,12 +516,13 @@ class PosixEnv : public Env {
   Status NewRandomAccessFile(const std::string& filename,
                              RandomAccessFile** result) override {
     *result = nullptr;
+    bool is_vlog = (filename.find("vlog") != std::string::npos);
     int fd = ::open(filename.c_str(), O_RDONLY);
     if (fd < 0) {
       return PosixError(filename, errno);
     }
 
-    if (!mmap_limiter_.Acquire() ||
+    if (is_vlog || !mmap_limiter_.Acquire() ||
         filename.find("vlog") != std::string::npos) {
       posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM);
       *result = new PosixRandomAccessFile(filename, fd, &fd_limiter_);
@@ -567,8 +573,11 @@ class PosixEnv : public Env {
   Status NewWritableFile(const std::string& filename,
                          WritableFile** result) override {
     int fd;
+    bool is_vlog = false;
     if (filename.find("vlog") != std::string::npos) {
-      fd = ::open(filename.c_str(), O_RDWR | O_APPEND | O_CREAT, 0644);
+      is_vlog = true;
+      fd = ::open(filename.c_str(), O_DIRECT | O_RDWR | O_APPEND | O_CREAT,
+                  0644);
     } else {
       fd = ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
     }
@@ -578,7 +587,7 @@ class PosixEnv : public Env {
       return PosixError(filename, errno);
     }
 
-    *result = new PosixWritableFile(filename, fd);
+    *result = new PosixWritableFile(filename, fd, is_vlog);
     return Status::OK();
   }
 
@@ -590,7 +599,7 @@ class PosixEnv : public Env {
       return PosixError(filename, errno);
     }
 
-    *result = new PosixWritableFile(filename, fd);
+    *result = new PosixWritableFile(filename, fd, false);
     return Status::OK();
   }
 

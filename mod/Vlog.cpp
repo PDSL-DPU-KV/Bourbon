@@ -20,15 +20,21 @@
 
 using std::string;
 
-const int buffer_size_max = 300 * 1024;
+// const int buffer_size_max = 300 * 1024;
 
 namespace adgMod {
 
-VLog::VLog(const std::string& vlog_name, CompressionType type)
-    : writer(nullptr), reader(nullptr), type(type) {
+VLog::VLog(const std::string& vlog_name, CompressionType type,
+           uint32_t buffer_size)
+    : writer(nullptr),
+      reader(nullptr),
+      type(type),
+      buffer_size(buffer_size),
+      pos(0) {
   adgMod::env->NewWritableFile(vlog_name, &writer);
   adgMod::env->NewRandomAccessFile(vlog_name, &reader);
-  buffer.reserve(buffer_size_max * 2);
+  // buffer.reserve(buffer_size * 2);
+  buffer = (char*)aligned_alloc(4096, buffer_size * 2);
   struct ::stat file_stat;
   ::stat(vlog_name.c_str(), &file_stat);
   vlog_size = file_stat.st_size;
@@ -37,24 +43,26 @@ VLog::VLog(const std::string& vlog_name, CompressionType type)
 // warning: we do not save the compression type in vlog
 std::pair<uint64_t, uint32_t> VLog::AddRecord(const Slice& key,
                                               const Slice& value) {
-  PutLengthPrefixedSlice(&buffer, key);
+  pos += PutLengthPrefixedSlice(&buffer[pos], key);
   uint64_t result = 0;
   uint32_t result_size = 0;
   if (type != leveldb::kNoCompression) {
     string compressed;
     auto s = Compress(type, value, &compressed);
     assert(s.first == type);
-    PutVarint32(&buffer, compressed.size());
-    result = vlog_size + buffer.size();
-    buffer.append(compressed.data(), compressed.size());
+    pos += PutVarint32(&buffer[pos], compressed.size());
+    result = vlog_size + pos;
+    memcpy(&buffer[pos], compressed.data(), compressed.size());
+    pos += compressed.size();
     result_size = compressed.size();
   } else {
-    PutVarint32(&buffer, value.size());
-    result = vlog_size + buffer.size();
-    buffer.append(value.data(), value.size());
+    pos += PutVarint32(&buffer[pos], value.size());
+    result = vlog_size + pos;
+    memcpy(&buffer[pos], value.data(), value.size());
+    pos += value.size();
     result_size = value.size();
   }
-  if (buffer.size() >= buffer_size_max) Flush();
+  if (pos >= buffer_size) Flush();
   return {result, result_size};
 }
 
@@ -63,7 +71,7 @@ string VLog::ReadRecord(uint64_t address, uint32_t size) {
   const char* p = nullptr;
   if (address >= vlog_size) {
     from_buffer = true;
-    p = buffer.c_str() + address - vlog_size;
+    p = buffer + address - vlog_size;
   } else {
     char* scratch = new char[size];
     Slice value;
@@ -85,13 +93,22 @@ string VLog::ReadRecord(uint64_t address, uint32_t size) {
 }
 
 void VLog::Flush() {
-  if (buffer.empty()) return;
-
-  vlog_size += buffer.size();
-  writer->Append(buffer);
-  writer->Flush();
-  buffer.clear();
-  buffer.reserve(buffer_size_max * 2);
+  if (pos == 0) return;
+  pos = (pos + 4096 - 1) & ~(4096 - 1);
+  vlog_size += pos;
+  auto s = writer->Append(Slice(buffer, pos));
+  if (!s.ok()) {
+    printf("vlog flush fail\n");
+  }
+  // s = writer->Sync();
+  // if (!s.ok()) {
+  //   printf("vlog sync fail\n");
+  // }
+  // writer->Flush();
+  // buffer.clear();
+  // buffer.reserve(buffer_size * 2);
+  // buffer.resize(0);
+  pos = 0;
 }
 
 void VLog::Sync() {
@@ -99,6 +116,9 @@ void VLog::Sync() {
   writer->Sync();
 }
 
-VLog::~VLog() { Flush(); }
+VLog::~VLog() {
+  Flush();
+  free(buffer);
+}
 
 }  // namespace adgMod
