@@ -69,8 +69,9 @@ Segment GreedyPLR::process(const struct point& pt, bool file) {
     this->state = "need1";
   } else if (this->state.compare("need1") == 0) {
     this->s1 = pt;
-    setup();
-    this->state = "ready";
+    if (setup()) {
+      this->state = "ready";
+    }
   } else if (this->state.compare("ready") == 0) {
     s = process__(pt, file);
   } else {
@@ -81,12 +82,19 @@ Segment GreedyPLR::process(const struct point& pt, bool file) {
   return s;
 }
 
-void GreedyPLR::setup() {
+bool GreedyPLR::setup() {
   this->rho_lower = get_line(get_upper_bound(this->s0, this->gamma),
                              get_lower_bound(this->s1, this->gamma));
+  if (!this->rho_lower.LineCheck()) {
+    return false;
+  }
   this->rho_upper = get_line(get_lower_bound(this->s0, this->gamma),
                              get_upper_bound(this->s1, this->gamma));
+  if (!this->rho_upper.LineCheck()) {
+    return false;
+  }
   this->sint = get_intersetction(this->rho_upper, this->rho_lower);
+  return true;
 }
 
 Segment GreedyPLR::current_segment() {

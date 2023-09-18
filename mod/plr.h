@@ -1,5 +1,4 @@
-#include <cstdint>
-#include <deque>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,13 @@ struct point {
 struct line {
   double a;
   double b;
+
+  bool LineCheck() {
+    if (!std::isnan(a) && !std::isnan(b)) {
+      return true;
+    }
+    return false;
+  }
 };
 
 class Segment {
@@ -47,7 +53,7 @@ class GreedyPLR {
   struct line rho_upper;
   struct point sint;
 
-  void setup();
+  bool setup();
   Segment current_segment();
   Segment process__(struct point pt, bool file);
 
